@@ -1,0 +1,109 @@
+import java.util.Scanner;
+
+public class ACAutomatic {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Masukkan nilai sensor MQ3: ");
+        int mq3 = scanner.nextInt();
+        System.out.print("Masukkan nilai sensor MQ4: ");
+        int mq4 = scanner.nextInt();
+        System.out.print("Masukkan nilai sensor MQ6: ");
+        int mq6 = scanner.nextInt();
+        System.out.print("Masukkan nilai sensor MQ7: ");
+        int mq7 = scanner.nextInt();
+        System.out.print("Masukkan nilai sensor MQ135: ");
+        int mq135 = scanner.nextInt();
+
+        System.out.print("Masukkan nilai sensor suhu (dalam derajat Celsius): ");
+        int suhu = scanner.nextInt();
+
+        String kategoriPolusi = evaluatePolusi(mq3, "MQ3") + " | " + 
+                                evaluatePolusi(mq4, "MQ4") + " | " + 
+                                evaluatePolusi(mq6, "MQ6") + " | " + 
+                                evaluatePolusi(mq7, "MQ7") + " | " + 
+                                evaluatePolusi(mq135, "MQ135");
+
+        String kategoriSuhu = evaluateSuhu(suhu);
+
+        String statusAC = determineStatusAC(kategoriPolusi, kategoriSuhu);
+
+        System.out.println("Kategori Polusi: " + kategoriPolusi);
+        System.out.println("Kategori Suhu: " + kategoriSuhu);
+        System.out.println("Status AC: " + statusAC);
+
+        scanner.close();
+    }
+
+    public static String evaluatePolusi(int nilaiPolusi, String sensor) {
+        String kategori = "sehat";
+
+        switch (sensor) {
+            case "MQ3":
+                if (nilaiPolusi > 300) kategori = "berbahaya";
+                break;
+            case "MQ4":
+                if (nilaiPolusi > 200) kategori = "berbahaya";
+                break;
+            case "MQ6":
+                if (nilaiPolusi > 300) kategori = "berbahaya";
+                break;
+            case "MQ7":
+                if (nilaiPolusi > 400) kategori = "berbahaya";
+                break;
+            case "MQ135":
+                if (nilaiPolusi > 500) kategori = "berbahaya";
+                break;
+            default:
+                kategori = "Invalid sensor";
+        }
+        return kategori;
+    }
+
+    public static String evaluateSuhu(int suhu) {
+        if (suhu <= 16) {
+            return "rendah";
+        } else if (suhu > 25) {
+            return "tinggi";
+        } else {
+            return "sedang";
+        }
+    }
+
+    public static String determineStatusAC(String kategoriPolusi, String kategoriSuhu) {
+        int berbahayaCount = 0;
+        String[] polusiSensors = kategoriPolusi.split(" \\| ");
+        
+        for (String polusi : polusiSensors) {
+            if (polusi.equals("berbahaya")) {
+                berbahayaCount++;
+            }
+        }
+
+        String kategoriPolusiFinal = "sehat";
+        if (berbahayaCount == 1) {
+            kategoriPolusiFinal = "rendah";
+        } else if (berbahayaCount == 2) {
+            kategoriPolusiFinal = "sedang";
+        } else if (berbahayaCount >= 3) {
+            kategoriPolusiFinal = "tinggi";
+        }
+
+        String kategoriSuhuFinal = kategoriSuhu;
+
+        if (kategoriPolusiFinal.equals("sehat") && kategoriSuhuFinal.equals("rendah")) {
+            return "mati";
+        } else if ((kategoriPolusiFinal.equals("sehat") && kategoriSuhuFinal.equals("sedang")) || 
+                   (kategoriPolusiFinal.equals("rendah") && kategoriSuhuFinal.equals("rendah"))) {
+            return "kecepatan rendah";
+        } else if ((kategoriPolusiFinal.equals("sedang") && kategoriSuhuFinal.equals("sedang")) || 
+                   (kategoriPolusiFinal.equals("rendah") && kategoriSuhuFinal.equals("tinggi")) || 
+                   (kategoriPolusiFinal.equals("tinggi") && kategoriSuhuFinal.equals("rendah"))) {
+            return "kecepatan sedang";
+        } else if (kategoriPolusiFinal.equals("tinggi") && kategoriSuhuFinal.equals("tinggi")) {
+            return "tinggi";
+        }
+
+        return "Error";
+    }
+}
