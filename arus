@@ -107,3 +107,4 @@ public class ACAutomatic {
         return "Error";
     }
 }
+//jika mati biru menyala,rendah hijau menyala,sedang oren menyala,tinggi merah mnenyala.
