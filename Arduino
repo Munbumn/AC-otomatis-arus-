@@ -4,55 +4,36 @@
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
-#define MQ3_PIN A0
-#define MQ4_PIN A1
-#define MQ6_PIN A2
-#define MQ7_PIN A3
-#define MQ135_PIN A4
+const int MQ3_PIN = A0;
+const int MQ4_PIN = A1;
+const int MQ6_PIN = A2;
+const int MQ7_PIN = A3;
+const int MQ135_PIN = A4;
+const int TEMP_PIN = A5;
 
-#define LED_BIRU 2
-#define LED_HIJAU 3
-#define LED_OREN 4
-#define LED_MERAH 5
-
-#define RELAY_PIN 8
+const int BLUE_LED = 2;
+const int GREEN_LED = 3;
+const int ORANGE_LED = 4;
+const int RED_LED = 5;
 
 void setup() {
-  pinMode(LED_BIRU, OUTPUT);
-  pinMode(LED_HIJAU, OUTPUT);
-  pinMode(LED_OREN, OUTPUT);
-  pinMode(LED_MERAH, OUTPUT);
-  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(ORANGE_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
 
   Serial.begin(9600);
-  dht.begin();
 }
 
 void loop() {
-  float suhu = dht.readTemperature();
-  if (isnan(suhu)) {
-    Serial.println("Gagal membaca suhu!");
-    return;
-  }
-
   int mq3 = analogRead(MQ3_PIN);
   int mq4 = analogRead(MQ4_PIN);
   int mq6 = analogRead(MQ6_PIN);
   int mq7 = analogRead(MQ7_PIN);
   int mq135 = analogRead(MQ135_PIN);
+  int suhu = analogRead(TEMP_PIN);
 
-  Serial.print("Suhu: ");
-  Serial.print(suhu);
-  Serial.print(" C, MQ3: ");
-  Serial.print(mq3);
-  Serial.print(", MQ4: ");
-  Serial.print(mq4);
-  Serial.print(", MQ6: ");
-  Serial.print(mq6);
-  Serial.print(", MQ7: ");
-  Serial.print(mq7);
-  Serial.print(", MQ135: ");
-  Serial.println(mq135);
+  suhu = map(suhu, 0, 1023, -40, 125);
 
   String kategoriPolusi = evaluatePolusi(mq3, "MQ3") + " | " +
                           evaluatePolusi(mq4, "MQ4") + " | " +
@@ -68,70 +49,100 @@ void loop() {
   Serial.println("Kategori Suhu: " + kategoriSuhu);
   Serial.println("Status AC: " + statusAC);
 
-  controlLEDandAC(statusAC);
+  updateLED(statusAC);
 
   delay(2000);
 }
 
 String evaluatePolusi(int nilaiPolusi, String sensor) {
   String kategori = "sehat";
-  if (sensor == "MQ3" && nilaiPolusi > 300) kategori = "berbahaya";
-  else if (sensor == "MQ4" && nilaiPolusi > 200) kategori = "berbahaya";
-  else if (sensor == "MQ6" && nilaiPolusi > 300) kategori = "berbahaya";
-  else if (sensor == "MQ7" && nilaiPolusi > 400) kategori = "berbahaya";
-  else if (sensor == "MQ135" && nilaiPolusi > 500) kategori = "berbahaya";
-  
+
+  if (sensor == "MQ3" && nilaiPolusi > 300) {
+    kategori = "berbahaya";
+  } else if (sensor == "MQ4" && nilaiPolusi > 200) {
+    kategori = "berbahaya";
+  } else if (sensor == "MQ6" && nilaiPolusi > 300) {
+    kategori = "berbahaya";
+  } else if (sensor == "MQ7" && nilaiPolusi > 400) {
+    kategori = "berbahaya";
+  } else if (sensor == "MQ135" && nilaiPolusi > 500) {
+    kategori = "berbahaya";
+  }
+
   return kategori;
 }
 
-String evaluateSuhu(float suhu) {
-  if (suhu <= 16) return "rendah";
-  else if (suhu > 25) return "tinggi";
-  else return "sedang";
+String evaluateSuhu(int suhu) {
+  if (suhu <= 16) {
+    return "rendah";
+  } else if (suhu > 25) {
+    return "tinggi";
+  } else {
+    return "sedang";
+  }
 }
 
 String determineStatusAC(String kategoriPolusi, String kategoriSuhu) {
   int berbahayaCount = 0;
-  String polusiSensors[] = split(kategoriPolusi, " | ");
-  for (String polusi : polusiSensors) {
-    if (polusi == "berbahaya") berbahayaCount++;
+  String polusiSensors[5];
+  int index = 0;
+  String temp = "";
+
+  for (int i = 0; i < kategoriPolusi.length(); i++) {
+    if (kategoriPolusi[i] == '|') {
+      polusiSensors[index++] = temp.trim();
+      temp = "";
+    } else {
+      temp += kategoriPolusi[i];
+    }
+  }
+  polusiSensors[index] = temp.trim();
+
+  for (int i = 0; i < 5; i++) {
+    if (polusiSensors[i] == "berbahaya") {
+      berbahayaCount++;
+    }
   }
 
   String kategoriPolusiFinal = "sehat";
-  if (berbahayaCount == 1) kategoriPolusiFinal = "rendah";
-  else if (berbahayaCount == 2) kategoriPolusiFinal = "sedang";
-  else if (berbahayaCount >= 3) kategoriPolusiFinal = "tinggi";
+  if (berbahayaCount == 1) {
+    kategoriPolusiFinal = "rendah";
+  } else if (berbahayaCount == 2) {
+    kategoriPolusiFinal = "sedang";
+  } else if (berbahayaCount >= 3) {
+    kategoriPolusiFinal = "tinggi";
+  }
 
-  String kategoriSuhuFinal = kategoriSuhu;
+  if (kategoriPolusiFinal == "sehat" && kategoriSuhu == "rendah") {
+    return "mati";
+  } else if ((kategoriPolusiFinal == "sehat" && kategoriSuhu == "sedang") ||
+             (kategoriPolusiFinal == "rendah" && kategoriSuhu == "rendah")) {
+    return "kecepatan rendah";
+  } else if ((kategoriPolusiFinal == "sedang" && kategoriSuhu == "sedang") ||
+             (kategoriPolusiFinal == "rendah" && kategoriSuhu == "tinggi") ||
+             (kategoriPolusiFinal == "tinggi" && kategoriSuhu == "rendah")) {
+    return "kecepatan sedang";
+  } else if (kategoriPolusiFinal == "tinggi" && kategoriSuhu == "tinggi") {
+    return "tinggi";
+  }
 
-  if (kategoriPolusiFinal == "sehat" && kategoriSuhuFinal == "rendah") return "mati";
-  else if ((kategoriPolusiFinal == "sehat" && kategoriSuhuFinal == "sedang") || 
-           (kategoriPolusiFinal == "rendah" && kategoriSuhuFinal == "rendah")) return "kecepatan rendah";
-  else if ((kategoriPolusiFinal == "sedang" && kategoriSuhuFinal == "sedang") || 
-           (kategoriPolusiFinal == "rendah" && kategoriSuhuFinal == "tinggi") || 
-           (kategoriPolusiFinal == "tinggi" && kategoriSuhuFinal == "rendah")) return "kecepatan sedang";
-  else if (kategoriPolusiFinal == "tinggi" && kategoriSuhuFinal == "tinggi") return "tinggi";
-  
   return "Error";
 }
 
-void controlLEDandAC(String statusAC) {
-  digitalWrite(LED_BIRU, LOW);
-  digitalWrite(LED_HIJAU, LOW);
-  digitalWrite(LED_OREN, LOW);
-  digitalWrite(LED_MERAH, LOW);
+void updateLED(String statusAC) {
+  digitalWrite(BLUE_LED, LOW);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(ORANGE_LED, LOW);
+  digitalWrite(RED_LED, LOW);
 
   if (statusAC == "mati") {
-    digitalWrite(LED_BIRU, HIGH);
-    digitalWrite(RELAY_PIN, LOW);
+    digitalWrite(BLUE_LED, HIGH);
   } else if (statusAC == "kecepatan rendah") {
-    digitalWrite(LED_HIJAU, HIGH);
-    digitalWrite(RELAY_PIN, HIGH);
+    digitalWrite(GREEN_LED, HIGH);
   } else if (statusAC == "kecepatan sedang") {
-    digitalWrite(LED_OREN, HIGH);
-    analogWrite(RELAY_PIN, 128);
+    digitalWrite(ORANGE_LED, HIGH);
   } else if (statusAC == "tinggi") {
-    digitalWrite(LED_MERAH, HIGH);
-    analogWrite(RELAY_PIN, 255);
+    digitalWrite(RED_LED, HIGH);
   }
 }
+
