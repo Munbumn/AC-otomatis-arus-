@@ -1,0 +1,101 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Inisialisasi LCD dengan alamat dan konfigurasi
+LiquidCrystal_I2C lcd(0x3f, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
+
+// Pin LED
+int ledHijau = 8;    
+int ledKuning = 9;   
+int ledMerah = 10;
+
+// Pin Buzzer
+int buzzer = 7;
+
+void setup() {
+  // Inisialisasi Serial Monitor dan LCD
+  Serial.begin(9600);
+  lcd.begin(16, 2);
+
+  // Inisialisasi pin LED dan Buzzer sebagai OUTPUT
+  pinMode(ledHijau, OUTPUT);
+  pinMode(ledKuning, OUTPUT);
+  pinMode(ledMerah, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+
+  // Menampilkan pesan awal di LCD
+  lcd.setCursor(0, 0);
+  lcd.print("Masukkan Nilai:");
+  lcd.setCursor(0, 1);
+  lcd.print("Udara (0-500)");
+}
+
+void loop() {
+  // Memeriksa apakah ada input dari Serial Monitor
+  if (Serial.available() > 0) {
+    // Membaca nilai input dari Serial Monitor
+    int polusi = Serial.parseInt(); // Membaca integer
+    Serial.flush(); // Membersihkan buffer Serial untuk menghindari input tidak valid
+
+    // Menampilkan nilai polusi di Serial Monitor dan LCD
+    Serial.print("Nilai Kualitas Udara: ");
+    Serial.println(polusi);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Kualitas Udara:");
+
+    // Logika untuk menyalakan LED, menampilkan status di LCD, dan mengaktifkan buzzer
+    if (polusi >= 0 && polusi < 200) { // Udara Baik
+      lcd.setCursor(0, 1);
+      lcd.print("Baik         ");
+      digitalWrite(ledHijau, HIGH);
+      digitalWrite(ledKuning, LOW);
+      digitalWrite(ledMerah, LOW);
+
+      // Buzzer berbunyi pendek
+      tone(buzzer, 1000); // Frekuensi 1000 Hz
+      delay(200);         // Durasi 200 ms
+      noTone(buzzer);     // Matikan buzzer
+    } 
+    else if (polusi >= 200 && polusi < 400) { // Udara Sedang
+      lcd.setCursor(0, 1);
+      lcd.print("Sedang       ");
+      digitalWrite(ledHijau, LOW);
+      digitalWrite(ledKuning, HIGH);
+      digitalWrite(ledMerah, LOW);
+
+      // Buzzer berbunyi menengah
+      tone(buzzer, 1500); // Frekuensi 1500 Hz
+      delay(300);         // Durasi 300 ms
+      noTone(buzzer);     // Matikan buzzer
+    } 
+    else if (polusi >= 400 && polusi <= 500) { // Udara Buruk
+      lcd.setCursor(0, 1);
+      lcd.print("Buruk        ");
+      digitalWrite(ledHijau, LOW);
+      digitalWrite(ledKuning, LOW);
+      digitalWrite(ledMerah, HIGH);
+
+      // Buzzer berbunyi panjang
+      tone(buzzer, 2000); // Frekuensi 2000 Hz
+      delay(500);         // Durasi 500 ms
+      noTone(buzzer);     // Matikan buzzer
+    } 
+    else { // Untuk input tidak valid
+      lcd.setCursor(0, 1);
+      lcd.print("Input Salah  ");
+      digitalWrite(ledHijau, LOW);
+      digitalWrite(ledKuning, LOW);
+      digitalWrite(ledMerah, LOW);
+
+      // Buzzer berbunyi sebagai peringatan
+      tone(buzzer, 500);  // Frekuensi 500 Hz
+      delay(400);         // Durasi 400 ms
+      noTone(buzzer);     // Matikan buzzer
+    }
+
+    // Tunggu 3,5 detik sebelum berubah menjadi hijau kembali dan membaca input lagi
+    delay(3500); 
+  }
+}
