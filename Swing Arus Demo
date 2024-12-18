@@ -1,0 +1,199 @@
+import javax.swing.*;
+import javax.swing.plaf.nimbus.NimbusLookAndFeel;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import javax.sound.sampled.*;
+import java.io.File;
+import java.io.IOException;
+
+public class ACTBO {
+    public static void main(String[] args) {
+        // Mengatur Look and Feel Nimbus
+        try {
+            UIManager.setLookAndFeel(new NimbusLookAndFeel());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Frame Utama
+        JFrame frame = new JFrame("Pengaturan AC Otomatis");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(600, 800);
+        frame.setLayout(new GridBagLayout());
+        frame.getContentPane().setBackground(new Color(240, 248, 255));
+
+        // Layout Constraints
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        // Komponen Input Sensor
+        JLabel lblMQ135 = new JLabel("Sensor MQ-135 (Polusi Udara):");
+        JComboBox<String> cmbMQ135 = new JComboBox<>(new String[]{"No", "Yes"});
+        lblMQ135.setToolTipText("Sensor untuk mendeteksi polusi udara.");
+
+        JLabel lblMQ4 = new JLabel("Sensor MQ-4 (Gas Metana):");
+        JComboBox<String> cmbMQ4 = new JComboBox<>(new String[]{"No", "Yes"});
+        lblMQ4.setToolTipText("Sensor untuk mendeteksi gas metana.");
+
+        JLabel lblMQ7 = new JLabel("Sensor MQ-7 (Karbon Monoksida):");
+        JComboBox<String> cmbMQ7 = new JComboBox<>(new String[]{"No", "Yes"});
+        lblMQ7.setToolTipText("Sensor untuk mendeteksi karbon monoksida.");
+
+        JLabel lblMQ3 = new JLabel("Sensor MQ-3 (Alkohol):");
+        JComboBox<String> cmbMQ3 = new JComboBox<>(new String[]{"No", "Yes"});
+        lblMQ3.setToolTipText("Sensor untuk mendeteksi alkohol.");
+
+        JLabel lblMQ6 = new JLabel("Sensor MQ-6 (Gas LPG):");
+        JComboBox<String> cmbMQ6 = new JComboBox<>(new String[]{"No", "Yes"});
+        lblMQ6.setToolTipText("Sensor untuk mendeteksi gas LPG.");
+
+        JLabel lblSuhu = new JLabel("Masukkan Suhu (°C):");
+        JTextField txtSuhu = new JTextField();
+        lblSuhu.setToolTipText("Masukkan suhu ruangan saat ini.");
+
+        JButton btnProses = new JButton("Proses");
+        JButton btnReset = new JButton("Reset");
+
+        // Output Status
+        JLabel lblStatusPolusi = new JLabel("Status Polusi: ");
+        JLabel lblStatusSuhu = new JLabel("Status Suhu: ");
+        JLabel lblStatusAC = new JLabel("Status AC: ");
+        JLabel lblACPowerStatus = new JLabel("Status Daya AC: ");
+
+        // Progress Bar
+        JProgressBar progressBar = new JProgressBar(0, 5);
+        progressBar.setStringPainted(true);
+
+        // Adjust AC Power
+        JLabel lblACPower = new JLabel("Power AC: ");
+        JSlider sliderAC = new JSlider(0, 100, 50);
+        sliderAC.setPaintTicks(true);
+        sliderAC.setPaintLabels(true);
+        sliderAC.setMajorTickSpacing(25);
+
+        // Menambahkan Komponen ke Frame
+        gbc.gridx = 0; gbc.gridy = 0; frame.add(lblMQ135, gbc);
+        gbc.gridx = 1; frame.add(cmbMQ135, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1; frame.add(lblMQ4, gbc);
+        gbc.gridx = 1; frame.add(cmbMQ4, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2; frame.add(lblMQ7, gbc);
+        gbc.gridx = 1; frame.add(cmbMQ7, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 3; frame.add(lblMQ3, gbc);
+        gbc.gridx = 1; frame.add(cmbMQ3, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 4; frame.add(lblMQ6, gbc);
+        gbc.gridx = 1; frame.add(cmbMQ6, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 5; frame.add(lblSuhu, gbc);
+        gbc.gridx = 1; frame.add(txtSuhu, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 6; frame.add(btnProses, gbc);
+        gbc.gridx = 1; frame.add(btnReset, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 7; frame.add(progressBar, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 8; frame.add(lblACPower, gbc);
+        gbc.gridx = 1; frame.add(sliderAC, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 9; frame.add(lblStatusPolusi, gbc);
+        gbc.gridx = 1; frame.add(lblStatusSuhu, gbc);
+        gbc.gridx = 0; gbc.gridy = 10; frame.add(lblStatusAC, gbc);
+        gbc.gridx = 1; frame.add(lblACPowerStatus, gbc);
+
+        // Logika Tombol Proses
+        final int[] polusiArray = {0};
+        btnProses.addActionListener((ActionEvent e) -> {
+            try {
+                polusiArray[0] = 0;
+
+                // Hitung Sensor Aktif
+                polusiArray[0] += cmbMQ135.getSelectedItem().equals("Yes") ? 1 : 0;
+                polusiArray[0] += cmbMQ4.getSelectedItem().equals("Yes") ? 1 : 0;
+                polusiArray[0] += cmbMQ7.getSelectedItem().equals("Yes") ? 1 : 0;
+                polusiArray[0] += cmbMQ3.getSelectedItem().equals("Yes") ? 1 : 0;
+                polusiArray[0] += cmbMQ6.getSelectedItem().equals("Yes") ? 1 : 0;
+
+                // Evaluasi Status Polusi
+                String statusPolusi = (polusiArray[0] > 4) ? "Tinggi" : (polusiArray[0] >= 2) ? "Sedang" : "Rendah";
+                lblStatusPolusi.setText("Status Polusi: " + statusPolusi);
+
+                // Evaluasi Status Suhu
+                int suhu = Integer.parseInt(txtSuhu.getText());
+                String statusSuhu = (suhu > 25) ? "Tinggi" : (suhu < 18) ? "Rendah" : "Sedang";
+                lblStatusSuhu.setText("Status Suhu: " + statusSuhu);
+
+                // Status AC
+                String statusAC = (statusPolusi.equals("Tinggi") || statusSuhu.equals("Tinggi")) ? "Tinggi" :
+                                  (statusPolusi.equals("Sedang") || statusSuhu.equals("Sedang")) ? "Sedang" : "Mati";
+                lblStatusAC.setText("Status AC: " + statusAC);
+
+                // Mengatur warna Status AC
+                lblStatusAC.setForeground(
+                        statusAC.equals("Tinggi") ? Color.RED :
+                        statusAC.equals("Sedang") ? Color.ORANGE : Color.BLUE
+                );
+
+                // Menentukan Daya AC
+                int acPower = (statusPolusi.equals("Tinggi") || statusSuhu.equals("Tinggi")) ? 100 :
+                              (statusPolusi.equals("Sedang") || statusSuhu.equals("Sedang")) ? 75 : 50;
+                sliderAC.setValue(acPower);
+                lblACPowerStatus.setText("Status Daya AC: " + acPower + "%");
+
+                // Putar suara peringatan jika polusi atau suhu terlalu tinggi
+                if (statusPolusi.equals("Tinggi") || statusSuhu.equals("Tinggi")) {
+                    playSound("warning.wav");  // Pastikan file suara "warning.wav" ada
+                }
+
+                // Animasi Progress Bar
+                new Thread(() -> {
+                    for (int i = 0; i <= polusiArray[0]; i++) {
+                        progressBar.setValue(i);
+                        try {
+                            Thread.sleep(200);
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                }).start();
+
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(frame, "Masukkan suhu berupa angka!", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        // Logika Tombol Reset
+        btnReset.addActionListener(e -> {
+            txtSuhu.setText("");
+            cmbMQ135.setSelectedIndex(0);
+            cmbMQ4.setSelectedIndex(0);
+            cmbMQ7.setSelectedIndex(0);
+            cmbMQ3.setSelectedIndex(0);
+            cmbMQ6.setSelectedIndex(0);
+            progressBar.setValue(0);
+            sliderAC.setValue(50);
+            lblStatusPolusi.setText("Status Polusi: ");
+            lblStatusSuhu.setText("Status Suhu: ");
+            lblStatusAC.setText("Status AC: ");
+            lblACPowerStatus.setText("Status Daya AC: ");
+        });
+
+        frame.setVisible(true);
+    }
+
+    // Fungsi untuk memainkan suara
+    private static void playSound(String fileName) {
+        try {
+            File soundFile = new File(fileName);
+            AudioInputStream audioIn = AudioSystem.getAudioInputStream(soundFile);
+            Clip clip = AudioSystem.getClip();
+            clip.open(audioIn);
+            clip.start();
+        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+            e.printStackTrace();
+        }
+    }
+}
