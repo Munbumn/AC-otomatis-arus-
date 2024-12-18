@@ -1,0 +1,152 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Inisialisasi LCD
+LiquidCrystal_I2C lcd(0x3f, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE);
+
+// Pin LED    
+int ledHijau = 8;   
+int ledKuning = 9; 
+int ledMerah = 10;  
+
+// Pin Buzzer
+int buzzer = 7;
+
+// Fungsi untuk mengevaluasi polusi
+String evaluatePolusi(int nilaiPolusi, String sensor) {
+  if ((sensor == "MQ3" && nilaiPolusi > 300) ||
+      (sensor == "MQ4" && nilaiPolusi > 200) ||
+      (sensor == "MQ6" && nilaiPolusi > 300) ||
+      (sensor == "MQ7" && nilaiPolusi > 400) ||
+      (sensor == "MQ135" && nilaiPolusi > 500)) {
+    return "berbahaya";
+  }
+  return "rendah";
+}
+
+// Fungsi untuk mengevaluasi suhu
+String evaluateSuhu(int suhu) {
+  if (suhu <= 16) {
+    return "rendah";
+  } else if (suhu > 25) {
+    return "tinggi";
+  }
+  return "sedang";
+}
+
+// Fungsi untuk menentukan status berdasarkan polusi dan suhu
+String determineStatus(int berbahayaCount, String kategoriSuhu) {
+  String kategoriPolusiFinal;
+  if (berbahayaCount == 0) kategoriPolusiFinal = "rendah";
+  else if (berbahayaCount == 1) kategoriPolusiFinal = "rendah";
+  else if (berbahayaCount == 2) kategoriPolusiFinal = "sedang";
+  else kategoriPolusiFinal = "tinggi";
+
+  // Debugging
+  Serial.println("Kategori Polusi: " + kategoriPolusiFinal);
+  Serial.println("Kategori Suhu: " + kategoriSuhu);
+
+  if (kategoriPolusiFinal == "rendah" && kategoriSuhu == "rendah") {
+    return "baik";
+  } else if ((kategoriPolusiFinal == "rendah" && kategoriSuhu == "sedang") || 
+             (kategoriPolusiFinal == "sedang" && kategoriSuhu == "rendah")) {
+    return "sedang";
+  } else if ((kategoriPolusiFinal == "sedang" && kategoriSuhu == "sedang") || 
+             (kategoriPolusiFinal == "rendah" && kategoriSuhu == "tinggi") || 
+             (kategoriPolusiFinal == "tinggi" && kategoriSuhu == "rendah")) {
+    return "sedang";
+  } else if (
+            (kategoriPolusiFinal == "sedang" && kategoriSuhu == "tinggi") || 
+            (kategoriPolusiFinal == "tinggi" && kategoriSuhu == "sedang") || 
+            (kategoriPolusiFinal == "tinggi" && kategoriSuhu == "tinggi")) {
+    return "bahaya";
+  }
+
+  // Debugging jika terjadi Error
+  Serial.println("Tidak ada kondisi yang cocok.");
+  return "Error";
+}
+
+void setup() {
+  // Inisialisasi pin dan LCD
+  pinMode(ledHijau, OUTPUT);
+  pinMode(ledKuning, OUTPUT);
+  pinMode(ledMerah, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+
+  lcd.begin(16, 2);
+  lcd.print("Idle");
+  delay(2000);
+
+  Serial.begin(9600); // Inisialisasi komunikasi Serial
+  Serial.println("Masukkan nilai sensor (MQ3, MQ4, MQ6, MQ7, MQ135) dan suhu.");
+  Serial.println("Format: MQ3 MQ4 MQ6 MQ7 MQ135 SUHU");
+  Serial.println("Contoh: 250 150 200 300 450 27");
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    // Membaca data input dari Serial Monitor
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+
+    // Memisahkan nilai berdasarkan spasi
+    int mq3, mq4, mq6, mq7, mq135, suhu;
+    sscanf(input.c_str(), "%d %d %d %d %d %d", &mq3, &mq4, &mq6, &mq7, &mq135, &suhu);
+
+    // Evaluasi polusi
+    int berbahayaCount = 0;
+    String kategoriPolusi = evaluatePolusi(mq3, "MQ3");
+    if (kategoriPolusi == "berbahaya") berbahayaCount++;
+    kategoriPolusi += " | " + evaluatePolusi(mq4, "MQ4");
+    if (evaluatePolusi(mq4, "MQ4") == "berbahaya") berbahayaCount++;
+    kategoriPolusi += " | " + evaluatePolusi(mq6, "MQ6");
+    if (evaluatePolusi(mq6, "MQ6") == "berbahaya") berbahayaCount++;
+    kategoriPolusi += " | " + evaluatePolusi(mq7, "MQ7");
+    if (evaluatePolusi(mq7, "MQ7") == "berbahaya") berbahayaCount++;
+    kategoriPolusi += " | " + evaluatePolusi(mq135, "MQ135");
+    if (evaluatePolusi(mq135, "MQ135") == "berbahaya") berbahayaCount++;
+
+    // Evaluasi suhu
+    String kategoriSuhu = evaluateSuhu(suhu);
+
+    // Tentukan status berdasarkan polusi dan suhu
+    String status = determineStatus(berbahayaCount, kategoriSuhu);
+
+    // Tampilkan di LCD
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Polusi: ");
+    if (berbahayaCount > 2) {
+      lcd.print("Tinggi");
+    } else if (berbahayaCount == 2) {
+      lcd.print("Sedang");
+    } else {
+      lcd.print("Rendah");
+    }
+    lcd.setCursor(0, 1);
+    lcd.print("Suhu: ");
+    lcd.print(kategoriSuhu);
+
+    // Tampilkan status di Serial Monitor
+    Serial.println("Status: " + status);
+
+    // Nyalakan LED sesuai status
+    digitalWrite(ledHijau, status == "baik");
+    digitalWrite(ledKuning, status == "sedang");
+    digitalWrite(ledMerah, status == "bahaya");
+
+    // Aktifkan buzzer (opsional)
+    if (status == "bahaya") {
+      tone(buzzer, 2000, 500);
+    } else if (status == "sedang") {
+      tone(buzzer, 1500, 300);
+    } else if (status == "baik") {
+      tone(buzzer, 1000, 200);
+    } else {
+      noTone(buzzer);
+    }
+
+    delay(5000); // Delay sebelum membaca kembali
+  }
+}
